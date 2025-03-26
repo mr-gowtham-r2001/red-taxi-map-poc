@@ -45,7 +45,10 @@ fun RTRide() {
 
     // Function to apply the offset to a location
     fun applyOffset(location: LatLng): LatLng {
-        return LatLng(location.latitude + fixedOffset.latitude, location.longitude + fixedOffset.longitude)
+        return LatLng(
+            location.latitude + fixedOffset.latitude,
+            location.longitude + fixedOffset.longitude
+        )
     }
 
     LaunchedEffect(Unit) {
@@ -58,7 +61,9 @@ fun RTRide() {
 
     LaunchedEffect(cameraPositionState.position) {
         // If you want the marker to follow the camera with offset
-        currentLocationMarkerState.position = cameraPositionState.position.target
+        val targetMarker = cameraPositionState.position.target
+        currentLocationMarkerState.position =
+            (LatLng(targetMarker.latitude + 0.0010, targetMarker.longitude))
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -87,7 +92,8 @@ fun RTRide() {
                 .clickable {
                     getCurrentLocation(fusedLocationProviderClient) { location ->
                         val offsetLocation = applyOffset(location)
-                        currentLocationMarkerState.position = LatLng(location.latitude, location.longitude)
+                        currentLocationMarkerState.position =
+                            LatLng(location.latitude, location.longitude)
                         cameraPositionState.move(
                             CameraUpdateFactory.newLatLngZoom(
                                 offsetLocation,
