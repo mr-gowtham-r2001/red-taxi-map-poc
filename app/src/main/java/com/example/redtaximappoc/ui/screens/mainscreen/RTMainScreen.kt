@@ -1,6 +1,5 @@
 package com.example.redtaximappoc.ui.screens.mainscreen
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.NavigationBar
@@ -24,10 +23,10 @@ fun RTMainScreen() {
     Scaffold(
         bottomBar = {
             if (currentRoute(navController) in listOf(
-                    RTScreen.Ride.route, RTScreen.Booking.route, RTScreen.Profile.route
+                    RTScreen.Map.route, RTScreen.Booking.route, RTScreen.Profile.route
                 )
             ) {
-                BottomNavigationUI(navController)
+                // BottomNavigationUI(navController)
             }
         },
         content = { paddingValue ->
@@ -48,7 +47,7 @@ fun BottomNavigationUI(navController: NavController) {
                 label = { Text(text = stringResource(id = item.title)) },
                 selected = currentRoute(navController) == item.route,
                 onClick = {
-                    navController.singleTopNavigator(item.route)
+                    navController.navigate(item.route)
                 })
         }
     }

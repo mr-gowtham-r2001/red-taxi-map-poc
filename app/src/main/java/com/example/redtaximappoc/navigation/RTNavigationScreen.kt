@@ -25,6 +25,7 @@ sealed class RTScreen(
         )
     },
 ) {
+    data object Map : RTScreen("map")
     data object Ride : RTScreen("ride")
     data object Booking : RTScreen("booking")
     data object Profile : RTScreen("profile")

@@ -12,7 +12,8 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
-import com.example.redtaximappoc.ui.screens.ride.RTRide
+import com.example.redtaximappoc.ui.screens.ride.RTMap
+import com.example.redtaximappoc.ui.screens.ride.RTSelectRide
 
 /**
  * Sets up the navigation graph for the app.
@@ -23,9 +24,13 @@ import com.example.redtaximappoc.ui.screens.ride.RTRide
 fun Navigation(
     navController: NavHostController,
 ) {
-    NavHost(navController, startDestination = RTScreen.Ride.route) {
+    NavHost(navController, startDestination = RTScreen.Map.route) {
+        composable(RTScreen.Map.route) {
+            RTMap(navController)
+        }
+
         composable(RTScreen.Ride.route) {
-            RTRide()
+            RTSelectRide()
         }
 
         composable(RTScreen.Booking.route) {
