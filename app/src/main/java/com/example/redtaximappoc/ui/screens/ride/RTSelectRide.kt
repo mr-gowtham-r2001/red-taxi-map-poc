@@ -27,7 +27,6 @@ fun RTSelectRide() {
     }
 }
 
-
 @Composable
 @Preview(showBackground = true)
 fun RTSelectRidePreview() {

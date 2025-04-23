@@ -2,7 +2,6 @@ package com.example.redtaximappoc.ui.screens.ride
 
 import android.annotation.SuppressLint
 import android.util.Log
-import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -11,7 +10,10 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,6 +30,7 @@ import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,11 +45,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavHostController
-import androidx.navigation.compose.rememberNavController
 import com.example.redtaximappoc.R
-import com.example.redtaximappoc.navigation.RTScreen
-import com.example.redtaximappoc.utils.singleTopNavigator
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
@@ -54,7 +53,9 @@ import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.CameraMoveStartedReason
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
@@ -63,16 +64,25 @@ import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberMarkerState
 
 @Composable
-fun RTMap(navController: NavHostController) {
+fun RTMap() {
     val context = LocalContext.current
     val fusedLocationProviderClient = remember {
         LocationServices.getFusedLocationProviderClient(context)
     }
     val currentLocationMarkerState = rememberMarkerState()
     val cameraPositionState = rememberCameraPositionState()
-    var isNeedToShowConfirmRideView by remember { mutableStateOf<Boolean>(true) }
-    var isInitial by remember { mutableStateOf(true) }
-    // Define your fixed offset (0.010 degrees latitude in this case)
+
+
+    // Track if bottom sheet should be shown
+    var showBottomSheet by remember { mutableStateOf(true) }
+
+    // Track if this is the initial load
+    var isConfirmLocationButtonClicked by remember { mutableStateOf(false) }
+
+    // Track camera position changes
+    var lastCameraPosition by remember { mutableStateOf<CameraPosition?>(null) }
+
+    // Define your fixed offset for camera position
     val fixedOffset = remember { LatLng(-0.0015, 0.0) }
 
     // Function to apply the offset to a location
@@ -83,6 +93,20 @@ fun RTMap(navController: NavHostController) {
         )
     }
 
+    val uiSettings = remember {
+        MapUiSettings(
+            zoomControlsEnabled = false,
+            myLocationButtonEnabled = false,
+            compassEnabled = false
+        )
+    }
+    val mapProperties = remember {
+        MapProperties(
+            isMyLocationEnabled = true,
+        )
+    }
+
+    // Initial location setup
     LaunchedEffect(Unit) {
         getCurrentLocation(fusedLocationProviderClient) { location ->
             val offsetLocation = applyOffset(location)
@@ -91,24 +115,50 @@ fun RTMap(navController: NavHostController) {
         }
     }
 
+    // Handle camera position changes
     LaunchedEffect(cameraPositionState.position) {
-        // If you want the marker to follow the camera with offset
+        // Update marker position to follow camera with offset
         val targetMarker = cameraPositionState.position.target
-        currentLocationMarkerState.position =
-            (LatLng(targetMarker.latitude + 0.0015, targetMarker.longitude))
-        isNeedToShowConfirmRideView = false
+        currentLocationMarkerState.position = LatLng(targetMarker.latitude + 0.0015, targetMarker.longitude)
+
+        // Save current camera position for future comparison
+        lastCameraPosition = cameraPositionState.position
     }
+
+
+        when (cameraPositionState.cameraMoveStartedReason) {
+            CameraMoveStartedReason.GESTURE -> {
+                // User started dragging the map
+                if (isConfirmLocationButtonClicked) {
+                    isConfirmLocationButtonClicked = false
+                    Log.d("MapDrag", "isConfirmLocationButtonClicked Map drag started by gesture")
+                } else {
+                    showBottomSheet = false
+                    Log.d("MapDrag", "showBottomSheet Map drag started by gesture")
+                }
+            }
+
+            else -> {
+                // Initial state or reason unknown
+            }
+        }
+
 
     Box(modifier = Modifier.fillMaxSize()) {
         GoogleMap(
             cameraPositionState = cameraPositionState,
-            modifier = Modifier.fillMaxSize(),
-            properties = MapProperties(isMyLocationEnabled = true),
-            uiSettings = MapUiSettings(
-                zoomControlsEnabled = false,
-                myLocationButtonEnabled = false,
-                zoomGesturesEnabled = false
-            ),
+            modifier = Modifier
+                .fillMaxSize()
+
+            ,
+            properties = mapProperties,
+            uiSettings = uiSettings,
+            onMapClick = {
+                // Hide bottom sheet if map is clicked
+                if (showBottomSheet) {
+                    showBottomSheet = false
+                }
+            }
         ) {
             Marker(
                 title = "Current Location",
@@ -117,19 +167,19 @@ fun RTMap(navController: NavHostController) {
             )
         }
 
+        // Menu icon
         Row(
-            modifier = Modifier
-                .padding(16.dp),
+            modifier = Modifier.padding(16.dp),
             horizontalArrangement = Arrangement.End
         ) {
             Image(
                 painter = painterResource(R.drawable.icon_menu),
-                contentDescription = null,
+                contentDescription = "Menu",
                 modifier = Modifier
                     .size(50.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .clickable {
-                        // Todo
+                        // Menu action
                     }
             )
         }
@@ -139,9 +189,10 @@ fun RTMap(navController: NavHostController) {
                 .align(Alignment.BottomEnd)
                 .fillMaxWidth()
         ) {
+            // My location button
             Image(
                 painter = painterResource(R.drawable.icon_my_location),
-                contentDescription = null,
+                contentDescription = "My Location",
                 modifier = Modifier
                     .align(Alignment.End)
                     .padding(16.dp)
@@ -158,56 +209,61 @@ fun RTMap(navController: NavHostController) {
                                     18f
                                 )
                             )
+                            // Reset dragging state when returning to current location
                         }
                     },
             )
 
-            //RTSelectRide()
-            if (isNeedToShowConfirmRideView || isInitial) {
-                LaunchedEffect(isInitial) {
-                    if (isInitial) isInitial = false
-                }
-                AnimatedVisibility(
-                    visible = isNeedToShowConfirmRideView,
-                    enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-                    exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+            // Bottom sheet with animation
+            AnimatedVisibility(
+                visible = showBottomSheet,
+                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight(0.8f)
+                        .clip(shape = RoundedCornerShape(topEnd = 30.dp, topStart = 30.dp))
+                        .background(Color.White)
+                        .pointerInput(Unit) {
+                            detectTapGestures { /* Consume gestures to block map interactions */ }
+                        }
                 ) {
-                    Column(
+                    ElevatedButton(
+                        onClick = {
+                            showBottomSheet = false
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .fillMaxHeight(0.8f)
-                            .clip(shape = RoundedCornerShape(topEnd = 30.dp, topStart = 30.dp))
-                            .background(Color.White)
-                            .pointerInput(Unit) {
-                                detectTapGestures { /* Consume gestures to block map interactions */ }
-                            }
+                            .padding(16.dp)
+                            .height(50.dp),
+                        colors = ButtonDefaults.elevatedButtonColors(containerColor = Black)
                     ) {
-                        ElevatedButton(
-                            onClick = {
-                                isNeedToShowConfirmRideView = false
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp)
-                                .height(50.dp),
-                            colors = ButtonDefaults.elevatedButtonColors(containerColor = Black)
-
-                        ) {
-                            Text("Dismiss Bottom View", color = Color.White)
-                        }
+                        Text("Dismiss Bottom View", color = Color.White)
                     }
+
+                    // Add your bottom sheet content here
                 }
-            } else {
+            }
+
+            // Confirm Location button - show only when bottom sheet is hidden
+            AnimatedVisibility(
+                visible = !showBottomSheet,
+                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+            ) {
                 ElevatedButton(
                     onClick = {
-                        isNeedToShowConfirmRideView = true
+                        // Show bottom sheet when location is confirmed
+                        isConfirmLocationButtonClicked = true
+                        showBottomSheet = true
                     },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp)
                         .height(50.dp),
                     colors = ButtonDefaults.elevatedButtonColors(containerColor = Black)
-
                 ) {
                     Text("Confirm Location", color = Color.White)
                 }
@@ -268,5 +324,5 @@ fun requestNewLocationData(
 @Composable
 @Preview(showBackground = true)
 fun RTRidePreview() {
-    RTMap(rememberNavController())
+    RTMap()
 }

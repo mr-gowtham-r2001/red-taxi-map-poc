@@ -1,5 +1,6 @@
 package com.example.redtaximappoc.navigation
 
+import RedTaxiBookRideScreen
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,7 +13,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
-import com.example.redtaximappoc.ui.screens.ride.RTMap
+import com.example.redtaximappoc.ui.screens.ride.RTMapNew
 import com.example.redtaximappoc.ui.screens.ride.RTSelectRide
 
 /**
@@ -26,7 +27,9 @@ fun Navigation(
 ) {
     NavHost(navController, startDestination = RTScreen.Map.route) {
         composable(RTScreen.Map.route) {
-            RTMap(navController)
+            //RedTaxiBookRideScreen()
+            //RTMap()
+            RTMapNew()
         }
 
         composable(RTScreen.Ride.route) {
